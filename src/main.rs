@@ -2,27 +2,20 @@ mod auth;
 mod util;
 mod widgets;
 
-use std::{
-    any,
-    fs::{self, File},
-    io::{self, BufRead},
-};
-
-use anyhow::Context;
 use color_eyre::{Result, eyre::Ok};
 
-use ini::configparser::ini::Ini;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyCode},
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Stylize},
-    widgets::{Block, BorderType, Widget, block::Position},
+    widgets::{Block, BorderType, Paragraph, Widget, block::Position},
 };
 use tui_input::Input;
 
 use crate::{
     auth::authenticate,
+    util::{Session, get_login_users, read_sessions},
     widgets::{select::SelectField, text::TextField, widget::InputField},
 };
 
@@ -33,6 +26,7 @@ struct AppState {
     session: SelectField<Session, fn(&Session) -> String>,
     focus_index: u8,
     max_focus_index: u8,
+    error_msg: Option<String>,
 }
 
 impl AppState {
@@ -46,60 +40,10 @@ impl AppState {
         self.focus_index = self.focus_index.saturating_sub(1);
     }
 }
-
-#[derive(Debug, Default, Clone)]
-struct Session {
-    name: String,
-    exec: String,
-}
-
-fn read_sessions() -> anyhow::Result<Vec<Session>> {
-    anyhow::Ok(
-        fs::read_dir("/usr/share/wayland-sessions")?
-            .filter_map(|e| {
-                let path = e.ok()?.path();
-                (path.extension()?.to_str()? == "desktop").then_some(path)
-            })
-            .filter_map(|path| {
-                let mut ini = Ini::new();
-                let conf = ini.load(path.to_str()?).ok()?;
-                let s = conf.get("desktop entry")?;
-
-                Some(Session {
-                    name: s.get("name")?.clone()?,
-                    exec: s.get("exec")?.clone()?,
-                })
-            })
-            .collect::<Vec<Session>>(),
-    )
-}
-fn get_login_users() -> anyhow::Result<Vec<String>> {
-    let file = File::open("/etc/passwd")?;
-    let reader = io::BufReader::new(file);
-
-    let mut users = Vec::new();
-
-    for line in reader.lines() {
-        let line = line?;
-        let fields: Vec<&str> = line.split(':').collect();
-        if fields.len() < 7 {
-            continue; // skip malformed lines
-        }
-
-        let username = fields[0];
-        let uid: u32 = fields[2].parse().unwrap_or(1);
-        let shell = fields[6];
-
-        if (uid == 0 || uid >= 1000) && !shell.ends_with("nologin") && shell != "/bin/false" {
-            users.push(username.to_string());
-        }
-    }
-
-    anyhow::Ok(users)
-}
 fn main() -> Result<()> {
     let sessions = read_sessions().unwrap();
     let users = get_login_users().unwrap();
+
     let mut state = AppState {
         focus_index: 0,
         session: SelectField {
@@ -123,6 +67,7 @@ fn main() -> Result<()> {
             mask: Some(String::from("*")),
         },
         max_focus_index: 3,
+        error_msg: None,
     };
 
     color_eyre::install()?;
@@ -139,6 +84,25 @@ fn run(mut terminal: DefaultTerminal, app_state: &mut AppState) -> Result<()> {
         terminal.draw(|f| render(f, app_state))?;
         let event = event::read()?;
 
+        if let Event::Key(key) = &event {
+            match key.code {
+                KeyCode::Esc => return Ok(()),
+                KeyCode::Down => app_state.focus_next(),
+                KeyCode::Up => app_state.focus_prev(),
+                KeyCode::Enter => {
+                    app_state.error_msg = None;
+                    let res = authenticate(
+                        &app_state.username.get_value(),
+                        &app_state.password.get_value(),
+                        &[app_state.session.get_value().exec],
+                    );
+                    if let Err(err) = res {
+                        app_state.error_msg = Some(err.to_string())
+                    }
+                }
+                _ => {}
+            }
+        };
         app_state
             .username
             .handle_event(app_state.focus_index, &event);
@@ -150,22 +114,6 @@ fn run(mut terminal: DefaultTerminal, app_state: &mut AppState) -> Result<()> {
         app_state
             .session
             .handle_event(app_state.focus_index, &event);
-
-        if let Event::Key(key) = &event {
-            match key.code {
-                KeyCode::Esc => return Ok(()),
-                KeyCode::Down => app_state.focus_next(),
-                KeyCode::Up => app_state.focus_prev(),
-                KeyCode::Enter => {
-                    let res = authenticate(
-                        &app_state.username.get_value(),
-                        &app_state.password.get_value(),
-                        &[app_state.session.get_value().exec],
-                    );
-                }
-                _ => {}
-            }
-        };
     }
     // Ok(())
 }
@@ -181,17 +129,27 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
 
     Block::bordered()
         .border_type(BorderType::Rounded)
-        .fg(Color::Red)
+        .fg(Color::Blue)
         .render(content_area, frame.buffer_mut());
 
     Block::bordered()
         .border_type(BorderType::Rounded)
-        .fg(Color::Yellow)
+        .fg(Color::Blue)
         .render(header_area, frame.buffer_mut());
 
-    Block::bordered()
-        .border_type(BorderType::Rounded)
-        .fg(Color::Blue)
+    let footer_text = app_state
+        .error_msg
+        .as_ref()
+        .map(ToString::to_string)
+        .unwrap_or_default();
+
+    let color = match app_state.error_msg.as_ref() {
+        Some(_) => Color::Red,
+        None => Color::Blue,
+    };
+
+    Paragraph::new(footer_text)
+        .block(Block::bordered().border_type(BorderType::Rounded).fg(color))
         .render(footer_area, frame.buffer_mut());
 
     let main_block = centered_rect(40, 11, content_area);
