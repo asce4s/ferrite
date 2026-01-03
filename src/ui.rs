@@ -39,15 +39,12 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         .render(header_area, frame.buffer_mut());
 
     let (title_txt, error_msg) = get_title_and_error(&app_state.auth_state);
-    let footer_text = error_msg
-        .as_ref()
-        .map(ToString::to_string)
-        .unwrap_or(app_state.hostname.clone());
 
-    let footer_color = match &error_msg {
-        Some(_) => Color::Red,
-        None => fg_color,
+    let (footer_color, footer_text): (Color, &str) = match &error_msg {
+        Some(msg) => (Color::Red, msg.as_str()),
+        None => (fg_color, app_state.hostname.as_str()),
     };
+
     Paragraph::new(footer_text)
         .block(
             Block::bordered()
