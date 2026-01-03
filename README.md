@@ -127,5 +127,5 @@ This project is currently in active development. Contributions are welcome, but 
 
 - Built with [ratatui](https://github.com/ratatui-org/ratatui)
 - Uses [greetd-ipc](https://crates.io/crates/greetd_ipc) for authentication
-- Inspired by other greetd greeters
+- Inspired by [ly](https://github.com/fairyglade/ly), a TUI display manager for Linux
 
