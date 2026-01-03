@@ -9,6 +9,7 @@ anyhow = "1.0.100"
 color-eyre = "0.6.5"
 crossterm = "0.29.0"
 greetd_ipc = {version = "0.10.3", features = ["sync-codec"] }
+hostname = "0.4.2"
 ratatui = { version = "0.29.0", features = ["all-widgets"] }
 tui-input = "0.14.0"
 

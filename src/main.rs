@@ -1,23 +1,25 @@
 mod app;
 mod auth;
 mod event;
+mod power;
 mod ui;
 mod util;
 mod widgets;
 
-use color_eyre::Result;
-use ratatui::DefaultTerminal;
 use crate::app::AppState;
-use crate::event::{handle_event, Action};
+use crate::event::{Action, handle_event};
 use crate::ui::render;
 use crate::util::{get_login_users, read_sessions};
+use color_eyre::Result;
+use ratatui::DefaultTerminal;
 
 fn main() -> Result<()> {
     color_eyre::install()?;
 
     let sessions = read_sessions()?;
     let users = get_login_users()?;
-    let mut app_state = AppState::new(sessions, users);
+    let hostname = hostname::get()?.to_string_lossy().to_string();
+    let mut app_state = AppState::new(sessions, users, hostname);
 
     let terminal = ratatui::init();
     let result = run(terminal, &mut app_state);

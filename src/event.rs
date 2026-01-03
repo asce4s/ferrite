@@ -1,7 +1,8 @@
-use ratatui::crossterm::event::{Event, KeyCode};
 use crate::app::AppState;
 use crate::auth::authenticate;
+use crate::power::{PowerAction, power};
 use crate::widgets::widget::InputField;
+use ratatui::crossterm::event::{Event, KeyCode};
 
 pub fn handle_event(event: &Event, app_state: &mut AppState) -> Result<Action, color_eyre::Report> {
     if let Event::Key(key) = event {
@@ -24,6 +25,9 @@ pub fn handle_event(event: &Event, app_state: &mut AppState) -> Result<Action, c
                     }
                 }
             }
+            KeyCode::F(1) => power(PowerAction::Shutdown),
+            KeyCode::F(2) => power(PowerAction::Reboot),
+
             _ => {
                 app_state
                     .username
@@ -33,9 +37,7 @@ pub fn handle_event(event: &Event, app_state: &mut AppState) -> Result<Action, c
                     .password
                     .handle_event(app_state.focus_index, event);
 
-                app_state
-                    .session
-                    .handle_event(app_state.focus_index, event);
+                app_state.session.handle_event(app_state.focus_index, event);
             }
         }
     }
@@ -47,4 +49,3 @@ pub enum Action {
     Continue,
     Quit,
 }
-

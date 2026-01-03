@@ -18,10 +18,11 @@ pub struct AppState {
     pub focus_index: u8,
     pub max_focus_index: u8,
     pub auth_state: AuthState,
+    pub hostname: String,
 }
 
 impl AppState {
-    pub fn new(sessions: Vec<Session>, users: Vec<String>) -> Self {
+    pub fn new(sessions: Vec<Session>, users: Vec<String>, hostname: String) -> Self {
         Self {
             auth_state: AuthState::None,
             focus_index: 0,
@@ -46,6 +47,7 @@ impl AppState {
                 mask: Some(String::from("*")),
             },
             max_focus_index: 2,
+            hostname,
         }
     }
 
@@ -60,4 +62,3 @@ impl AppState {
         self.focus_index = self.focus_index.saturating_sub(1);
     }
 }
-

@@ -1,12 +1,12 @@
+use crate::app::{AppState, AuthState};
+use crate::auth::AuthError;
+use crate::widgets::widget::InputField;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     widgets::{Block, BorderType, Paragraph, Widget, block::Position},
 };
-use crate::app::{AppState, AuthState};
-use crate::auth::AuthError;
-use crate::widgets::widget::InputField;
 
 pub fn render(frame: &mut Frame, app_state: &mut AppState) {
     let fg_color = Color::White;
@@ -30,16 +30,19 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         .fg(fg_color)
         .render(content_area, frame.buffer_mut());
 
-    Block::bordered()
-        .border_type(BorderType::Plain)
-        .fg(fg_color)
+    Paragraph::new("F1 -> Shutdown | F2 -> Reboot")
+        .block(
+            Block::bordered()
+                .border_type(BorderType::Plain)
+                .fg(fg_color),
+        )
         .render(header_area, frame.buffer_mut());
 
     let (title_txt, error_msg) = get_title_and_error(&app_state.auth_state);
     let footer_text = error_msg
         .as_ref()
         .map(ToString::to_string)
-        .unwrap_or_default();
+        .unwrap_or(app_state.hostname.clone());
 
     let footer_color = match &error_msg {
         Some(_) => Color::Red,
@@ -116,4 +119,3 @@ fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
 
     horizontal_layout[1]
 }
-
