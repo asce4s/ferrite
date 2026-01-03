@@ -4,6 +4,9 @@
 
 A terminal-based authentication interface for [greetd](https://git.sr.ht/~kennylevinsen/greetd), built with Rust and [ratatui](https://github.com/ratatui-org/ratatui).
 
+<img width="1898" height="1005" alt="image" src="https://github.com/user-attachments/assets/d2e1f599-6c41-494d-bab8-2d541f248cc8" />
+
+
 ## Overview
 
 Ferrite provides a clean, keyboard-driven TUI for authenticating users and starting desktop sessions through greetd. It automatically discovers available desktop sessions and system users, allowing for a streamlined login experience.
