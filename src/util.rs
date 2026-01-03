@@ -3,8 +3,7 @@ use std::{
     fs::{self, File},
     io::{self, BufRead},
 };
-
-use ini::configparser::ini::Ini;
+use color_eyre::Result;
 
 #[derive(Debug, Default, Clone)]
 pub struct Session {
@@ -12,28 +11,96 @@ pub struct Session {
     pub exec: String,
 }
 
-fn read_sessions_in_dir(dir: &str) -> anyhow::Result<Vec<Session>> {
-    let sessions = fs::read_dir(dir)?
-        .filter_map(|e| {
-            let path = e.ok()?.path();
-            (path.extension()?.to_str()? == "desktop").then_some(path)
-        })
-        .filter_map(|path| {
-            let mut ini = Ini::new();
-            let conf = ini.load(path.to_str()?).ok()?;
-            let s = conf.get("desktop entry")?;
+fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
+    let mut sessions = Vec::new();
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return Ok(sessions),
+    };
 
-            Some(Session {
-                name: s.get("name")?.clone()?,
-                exec: s.get("exec")?.clone()?,
-            })
-        })
-        .collect::<Vec<Session>>();
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => return Ok(sessions),
+        };
+
+        let path = entry.path();
+
+        if path.extension().and_then(|v| v.to_str()) != Some("desktop") {
+            continue;
+        }
+
+        let file = match File::open(path) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        let reader = io::BufReader::new(file);
+        let mut session = Session::default();
+        for line in reader.lines().map_while(Result::ok) {
+            if let Some((key, value)) = line.split_once("=") {
+                match key.trim() {
+                    "Name" => session.name = value.to_string(),
+                    "Exec" => session.exec = value.to_string(),
+                    _ => {}
+                }
+            }
+            if !session.name.is_empty() && !session.exec.is_empty() {
+                break;
+            }
+        }
+
+        if !session.name.is_empty() && !session.exec.is_empty() {
+            sessions.push(session);
+        }
+    }
 
     Ok(sessions)
 }
 
-pub fn read_sessions() -> anyhow::Result<Vec<Session>> {
+// read_sessions_in_dir(dir: &str) -> anyhow::Result<Vec<Session>> {
+//     let sessions = fs::read_dir(dir)?
+//         .filter_map(|e| {
+//             let path = e.ok()?.path();
+//             (path.extension()?.to_str()? == "desktop").then_some(path)
+//         })
+//         .filter_map(|path| {
+//             let file = File::open(path).expect("Unable to read file");
+//             let reader = io::BufReader::new(file);
+//
+//             let mut session = Session::default();
+//
+//             for line in reader.lines() {
+//                 let parts: Vec<&str> = line.unwrap().split("=").collect();
+//
+//                 if !session.name.is_empty() && !session.exec.is_empty() {
+//                     break;
+//                 }
+//
+//                 let key = parts.get(0).unwrap_or(&"").to_string();
+//                 let value = parts.get(1).unwrap_or(&"").to_string();
+//
+//                 if key.trim() == "Name" {
+//                     session.name = value.clone();
+//                 }
+//
+//                 if key.trim() == "Exec" {
+//                     session.exec = value.clone()
+//                 }
+//             }
+//
+//             if session.name.is_empty() || session.exec.is_empty() {
+//                 return None;
+//             }
+//
+//             Some(session)
+//         })
+//         .collect::<Vec<Session>>();
+//
+//     Ok(sessions)
+// }
+//
+pub fn read_sessions() -> Result<Vec<Session>> {
     let mut sessions = Vec::new();
 
     let mut search_paths: Vec<String> = vec![
@@ -56,7 +123,7 @@ pub fn read_sessions() -> anyhow::Result<Vec<Session>> {
 
     Ok(sessions)
 }
-pub fn get_login_users() -> anyhow::Result<Vec<String>> {
+pub fn get_login_users() -> Result<Vec<String>> {
     let file = File::open("/etc/passwd")?;
     let reader = io::BufReader::new(file);
 
@@ -78,5 +145,5 @@ pub fn get_login_users() -> anyhow::Result<Vec<String>> {
         }
     }
 
-    anyhow::Ok(users)
+    Ok(users)
 }

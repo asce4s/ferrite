@@ -1,25 +1,47 @@
+use core::fmt;
 use std::{env, os::unix::net::UnixStream};
 
-use color_eyre::{Result, eyre::eyre};
+use color_eyre::Result;
 use greetd_ipc::codec::SyncCodec;
 use greetd_ipc::{AuthMessageType, Request, Response};
 
-pub fn authenticate(username: &str, password: &str, session_cmd: &[String]) -> Result<()> {
+#[derive(Debug)]
+pub enum AuthError {
+    AuthFailed(String),
+    Connection(String),
+    Protocol(String),
+    InvalidSession(String),
+}
+
+impl fmt::Display for AuthError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthError::AuthFailed(msg) => write!(f, "Authentication failed: {msg}"),
+            AuthError::Connection(msg) => write!(f, "Connection error: {msg}"),
+            AuthError::Protocol(msg) => write!(f, "Protocol error: {msg}"),
+            AuthError::InvalidSession(msg) => write!(f, "Invalid session: {msg}"),
+        }
+    }
+}
+
+pub fn authenticate(
+    username: &str,
+    password: &str,
+    session_cmd: &[String],
+) -> Result<(), AuthError> {
     let socket_path = env::var("GREETD_SOCK").unwrap_or_else(|_| "/run/greetd.sock".to_string());
 
-    let mut stream = UnixStream::connect(&socket_path)
-        .map_err(|e| eyre!("failed to connect to greetd socket {}: {}", socket_path, e))?;
+    let mut stream =
+        UnixStream::connect(&socket_path).map_err(|e| AuthError::Connection(e.to_string()))?;
 
     Request::CreateSession {
         username: username.to_string(),
     }
     .write_to(&mut stream)
-    .map_err(|e| eyre!("failed to send create_session: {}", e))?;
+    .map_err(|e| AuthError::Protocol(e.to_string()))?;
 
     loop {
-        match Response::read_from(&mut stream)
-            .map_err(|e| eyre!("failed to read auth response: {}", e))?
-        {
+        match Response::read_from(&mut stream).map_err(|e| AuthError::Protocol(e.to_string()))? {
             Response::AuthMessage {
                 auth_message_type, ..
             } => {
@@ -32,24 +54,20 @@ pub fn authenticate(username: &str, password: &str, session_cmd: &[String]) -> R
 
                 Request::PostAuthMessageResponse { response }
                     .write_to(&mut stream)
-                    .map_err(|e| eyre!("failed to send auth response: {}", e))?;
+                    .map_err(|e| AuthError::Protocol(e.to_string()))?;
             }
             Response::Success => break,
-            Response::Error {
-                error_type,
-                description,
-            } => {
-                return Err(eyre!(
-                    "greetd auth failed ({:?}): {}",
-                    error_type,
-                    description
-                ));
+            Response::Error { description, .. } => {
+                let _ = Request::CancelSession.write_to(&mut stream);
+                return Err(AuthError::AuthFailed(description));
             }
         }
     }
 
     if session_cmd.is_empty() {
-        return Err(eyre!("no session command provided"));
+        return Err(AuthError::InvalidSession(
+            "no session command provided".into(),
+        ));
     }
 
     Request::StartSession {
@@ -57,20 +75,13 @@ pub fn authenticate(username: &str, password: &str, session_cmd: &[String]) -> R
         env: Vec::new(),
     }
     .write_to(&mut stream)
-    .map_err(|e| eyre!("failed to send start_session: {}", e))?;
+    .map_err(|e| AuthError::Protocol(e.to_string()))?;
 
-    match Response::read_from(&mut stream)
-        .map_err(|e| eyre!("failed to read start_session response: {}", e))?
-    {
+    match Response::read_from(&mut stream).map_err(|e| AuthError::Protocol(e.to_string()))? {
         Response::Success => Ok(()),
-        Response::AuthMessage { .. } => Err(eyre!("unexpected auth prompt after start_session")),
-        Response::Error {
-            error_type,
-            description,
-        } => Err(eyre!(
-            "start_session failed ({:?}): {}",
-            error_type,
-            description
+        Response::AuthMessage { .. } => Err(AuthError::InvalidSession(
+            "unexpected auth prompt after start_session".into(),
         )),
+        Response::Error { description, .. } => Err(AuthError::Protocol(description)),
     }
 }

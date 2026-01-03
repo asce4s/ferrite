@@ -51,7 +51,7 @@ where
         .margin(1)
         .areas(area);
 
-        Paragraph::new("").render(arrow_left, frame.buffer_mut());
+        Paragraph::new("<").render(arrow_left, frame.buffer_mut());
 
         let text = self
             .items
@@ -61,7 +61,7 @@ where
 
         Paragraph::new(text).render(value, frame.buffer_mut());
 
-        Paragraph::new("").render(arrow_right, frame.buffer_mut());
+        Paragraph::new(">").render(arrow_right, frame.buffer_mut());
 
         self.base_block()
             .style(style)

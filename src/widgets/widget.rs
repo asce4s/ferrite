@@ -19,6 +19,6 @@ pub trait InputField<T> {
     }
 
     fn base_block<'a>(&self) -> Block<'a> {
-        Block::bordered().border_type(BorderType::Rounded)
+        Block::bordered().border_type(BorderType::Plain)
     }
 }
