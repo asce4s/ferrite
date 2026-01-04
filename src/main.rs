@@ -2,12 +2,14 @@ mod app;
 mod auth;
 mod event;
 mod power;
+mod state;
 mod ui;
 mod util;
 mod widgets;
 
 use crate::app::AppState;
 use crate::event::{Action, handle_event};
+use crate::state::load_state;
 use crate::ui::render;
 use crate::util::{get_login_users, read_sessions};
 use color_eyre::Result;
@@ -18,8 +20,9 @@ fn main() -> Result<()> {
 
     let sessions = read_sessions()?;
     let users = get_login_users()?;
+    let state = load_state();
     let hostname = hostname::get()?.to_string_lossy().to_string();
-    let mut app_state = AppState::new(sessions, users, hostname);
+    let mut app_state = AppState::new(sessions, users, hostname, state);
 
     let terminal = ratatui::init();
     let result = run(terminal, &mut app_state);

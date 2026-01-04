@@ -43,12 +43,34 @@ cargo build --release
 
 After building, you can install the binary:
 
+**Using Make (recommended):**
+```bash
+# Build the project (as regular user, no sudo needed)
+make build
+
+# Install binary + systemd tmpfiles configuration (requires sudo)
+sudo make install
+
+# After installation, create the directories defined in the tmpfiles config
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/ferrite.conf
+```
+
+**Manual installation:**
 ```bash
 # Install to /usr/local/bin (requires sudo)
 sudo cp target/release/ferrite /usr/local/bin/
 
-# Or install to your local bin directory
+# Install systemd tmpfiles configuration (requires sudo)
+sudo install -Dm644 systemd-tmpfiles.conf /etc/tmpfiles.d/ferrite.conf
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/ferrite.conf
+
+# Or install to your local bin directory (no sudo needed)
 cp target/release/ferrite ~/.local/bin/
+```
+
+**Uninstall:**
+```bash
+sudo make uninstall
 ```
 
 ## Configuration

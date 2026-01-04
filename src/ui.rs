@@ -1,6 +1,7 @@
 use crate::app::{AppState, AuthState};
 use crate::auth::AuthError;
 use crate::widgets::widget::InputField;
+use ratatui::widgets::Padding;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -30,10 +31,11 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         .fg(fg_color)
         .render(content_area, frame.buffer_mut());
 
-    Paragraph::new("F1 -> Shutdown | F2 -> Reboot")
+    Paragraph::new("F1 - Shutdown | F2 - Reboot")
         .block(
             Block::bordered()
                 .border_type(BorderType::Plain)
+                .padding(Padding::symmetric(2, 0))
                 .fg(fg_color),
         )
         .render(header_area, frame.buffer_mut());
@@ -49,11 +51,12 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         .block(
             Block::bordered()
                 .border_type(BorderType::Plain)
+                .padding(Padding::symmetric(2, 0))
                 .fg(footer_color),
         )
         .render(footer_area, frame.buffer_mut());
 
-    let main_block = centered_rect(40, 11, content_area);
+    let main_block = centered_rect(45, 11, content_area);
 
     let [session_area, username_area, password_area] = Layout::vertical([
         Constraint::Length(3),

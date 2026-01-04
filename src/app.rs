@@ -1,4 +1,5 @@
 use crate::auth::AuthError;
+use crate::state::FerriteState;
 use crate::util::Session;
 use crate::widgets::{select::SelectField, text::TextField};
 use tui_input::Input;
@@ -22,12 +23,29 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(sessions: Vec<Session>, users: Vec<String>, hostname: String) -> Self {
+    pub fn new(
+        sessions: Vec<Session>,
+        users: Vec<String>,
+        hostname: String,
+        state: FerriteState,
+    ) -> Self {
+        let last_session = state
+            .last_session
+            .as_deref()
+            .and_then(|name| sessions.iter().position(|s| s.name == name));
+
+        let last_user = state
+            .last_user
+            .as_deref()
+            .and_then(|user| users.iter().position(|u| u == user));
+
+        let focus_index = (last_session.is_some() && last_user.is_some()) as u8 * 2;
+
         Self {
             auth_state: AuthState::None,
-            focus_index: 0,
+            focus_index,
             session: SelectField {
-                selected_idx: 0,
+                selected_idx: last_session.unwrap_or(0),
                 label: String::from("Session"),
                 index: 0,
                 items: sessions,
@@ -38,7 +56,7 @@ impl AppState {
                 label: String::from("Username"),
                 items: users,
                 transform: |s: &String| s.clone(),
-                selected_idx: 0,
+                selected_idx: last_user.unwrap_or(0),
             },
             password: TextField {
                 index: 2,
