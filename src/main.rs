@@ -14,6 +14,10 @@ use crate::ui::render;
 use crate::util::{get_login_users, read_sessions};
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
+use ratatui::crossterm::{
+    execute,
+    terminal::EnterAlternateScreen,
+};
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -24,8 +28,13 @@ fn main() -> Result<()> {
     let hostname = hostname::get()?.to_string_lossy().to_string();
     let mut app_state = AppState::new(sessions, users, hostname, state);
 
+    // Explicitly enter alternate screen mode for fullscreen
+    let mut stdout = std::io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    
     let terminal = ratatui::init();
     let result = run(terminal, &mut app_state);
+    
     ratatui::restore();
     result
 }

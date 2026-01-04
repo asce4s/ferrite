@@ -56,18 +56,19 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         )
         .render(footer_area, frame.buffer_mut());
 
-    let main_block = centered_rect(45, 11, content_area);
+    let main_block = centered_rect(55, 15, content_area);
 
     let [session_area, username_area, password_area] = Layout::vertical([
         Constraint::Length(3),
         Constraint::Length(3),
         Constraint::Length(3),
     ])
-    .margin(1)
+    .margin(2)
+    .spacing(1)
     .areas(main_block);
 
     Block::bordered()
-        .border_type(BorderType::Plain)
+        .border_type(BorderType::Double)
         .fg(fg_color)
         .title(title_txt)
         .title_position(Position::Top)
