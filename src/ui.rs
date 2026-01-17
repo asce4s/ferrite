@@ -56,7 +56,7 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         )
         .render(footer_area, frame.buffer_mut());
 
-    let main_block = centered_rect(55, 15, content_area);
+    let main_block = centered_rect(55, 13, content_area);
 
     let [session_area, username_area, password_area] = Layout::vertical([
         Constraint::Length(3),
@@ -64,7 +64,6 @@ pub fn render(frame: &mut Frame, app_state: &mut AppState) {
         Constraint::Length(3),
     ])
     .margin(2)
-    .spacing(1)
     .areas(main_block);
 
     Block::bordered()
