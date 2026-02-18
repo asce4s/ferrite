@@ -9,7 +9,7 @@ mod widgets;
 
 use crate::app::AppState;
 use crate::event::{Action, handle_event};
-use crate::state::load_state;
+use crate::state::{load_state, state_path};
 use crate::ui::render;
 use crate::util::{get_login_users, read_sessions};
 use color_eyre::Result;
@@ -23,8 +23,8 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     let sessions = read_sessions()?;
-    let users = get_login_users()?;
-    let state = load_state();
+    let users = get_login_users("/etc/passwd")?;
+    let state = load_state(state_path());
     let hostname = hostname::get()?.to_string_lossy().to_string();
     let mut app_state = AppState::new(sessions, users, hostname, state);
 

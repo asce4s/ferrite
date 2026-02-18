@@ -1,5 +1,5 @@
 use crate::power::{PowerAction, power};
-use crate::state::{FerriteState, save_state};
+use crate::state::{FerriteState, save_state, state_path};
 use crate::widgets::widget::InputField;
 use crate::{app::AppState, auth::authenticate};
 use ratatui::crossterm::event::{Event, KeyCode};
@@ -30,7 +30,9 @@ pub fn handle_event(event: &Event, app_state: &mut AppState) -> Result<Action, c
                             last_session: Some(app_state.session.get_value().name),
                             version: 1,
                         };
-                        let _=save_state(&state) ;// handle later
+                        if let Err(e) = save_state(&state, state_path()) {
+                            eprintln!("Warning: Failed to save state to {:?}: {e}", state_path());
+                        }
                         return Ok(Action::Quit);
                     }
                     Err(err) => {
