@@ -28,7 +28,10 @@ pub fn save_state(state: &FerriteState, path: PathBuf) -> anyhow::Result<()> {
 
     let json = serde_json::to_string(state)?;
 
-    let mut tmp = NamedTempFile::new_in(path.parent().unwrap())?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Invalid path: no parent directory"))?;
+    let mut tmp = NamedTempFile::new_in(parent)?;
     tmp.write_all(json.as_bytes())?;
     tmp.flush()?;
     tmp.persist(path)?;

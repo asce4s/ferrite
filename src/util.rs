@@ -137,7 +137,10 @@ pub fn get_login_users(path: &str) -> Result<Vec<String>> {
         }
 
         let username = fields[0];
-        let uid: u32 = fields[2].parse().unwrap_or(1);
+        let uid: u32 = match fields[2].parse() {
+            Ok(uid) => uid,
+            Err(_) => continue,
+        };
         let shell = fields[6];
 
         if (uid == 0 || uid >= 1000) && !shell.ends_with("nologin") && shell != "/bin/false" {
