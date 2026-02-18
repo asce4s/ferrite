@@ -28,10 +28,16 @@ where
         if let Event::Key(key) = &event {
             match key.code {
                 KeyCode::Left => {
-                    self.selected_idx = self.selected_idx.saturating_sub(1);
+                    if self.selected_idx == 0 {
+                        self.selected_idx = self.items.len().saturating_sub(1);
+                    } else {
+                        self.selected_idx -= 1;
+                    }
                 }
                 KeyCode::Right => {
-                    if self.items.len() > (self.selected_idx + 1) {
+                    if self.selected_idx >= self.items.len().saturating_sub(1) {
+                        self.selected_idx = 0;
+                    } else {
                         self.selected_idx += 1;
                     }
                 }
@@ -51,7 +57,9 @@ where
         .margin(1)
         .areas(area);
 
-        Paragraph::new("<").render(arrow_left, frame.buffer_mut());
+        if self.items.len() > 1 {
+            Paragraph::new("<").render(arrow_left, frame.buffer_mut());
+        }
 
         let text = self
             .items
@@ -61,7 +69,9 @@ where
 
         Paragraph::new(text).render(value, frame.buffer_mut());
 
-        Paragraph::new(">").render(arrow_right, frame.buffer_mut());
+        if self.items.len() > 1 {
+            Paragraph::new(">").render(arrow_right, frame.buffer_mut());
+        }
 
         self.base_block()
             .style(style)
@@ -109,8 +119,11 @@ mod tests {
         select.handle_event(0, &right_event);
         assert_eq!(select.selected_idx, 2);
 
-        // Test boundary (Right)
+        // Test wrapping (Right)
         select.handle_event(0, &right_event);
+        assert_eq!(select.selected_idx, 0);
+
+        select.handle_event(0, &left_event);
         assert_eq!(select.selected_idx, 2);
 
         select.handle_event(0, &left_event);
@@ -119,9 +132,9 @@ mod tests {
         select.handle_event(0, &left_event);
         assert_eq!(select.selected_idx, 0);
 
-        // Test boundary (Left)
+        // Test wrapping (Left)
         select.handle_event(0, &left_event);
-        assert_eq!(select.selected_idx, 0);
+        assert_eq!(select.selected_idx, 2);
     }
 
     #[test]
