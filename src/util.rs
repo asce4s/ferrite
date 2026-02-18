@@ -114,8 +114,8 @@ pub fn read_sessions() -> Result<Vec<Session>> {
 
     Ok(sessions)
 }
-pub fn get_login_users() -> Result<Vec<String>> {
-    let file = File::open("/etc/passwd")?;
+pub fn get_login_users(path: &str) -> Result<Vec<String>> {
+    let file = File::open(path)?;
     let reader = io::BufReader::new(file);
     parse_passwd(reader)
 }
@@ -152,6 +152,8 @@ fn parse_passwd<R: BufRead>(reader: R) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use tempfile::tempdir;
 
     #[test]
     fn test_split_shell_command() {
@@ -172,6 +174,21 @@ mod tests {
             split_shell_command("quoted\\ space"),
             vec!["quoted space"]
         );
+    }
+
+    #[test]
+    fn test_read_sessions_in_dir() {
+        let dir = tempdir().unwrap();
+        let session_file_path = dir.path().join("test.desktop");
+        let mut file = File::create(session_file_path).unwrap();
+        writeln!(file, "[Desktop Entry]").unwrap();
+        writeln!(file, "Name=TestSession").unwrap();
+        writeln!(file, "Exec=test-session").unwrap();
+
+        let sessions = read_sessions_in_dir(dir.path().to_str().unwrap()).unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].name, "TestSession");
+        assert_eq!(sessions[0].exec, vec!["test-session"]);
     }
 
     #[test]

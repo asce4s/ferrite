@@ -112,4 +112,17 @@ mod tests {
         field.handle_event(0, &Event::Key(KeyCode::Left.into()));
         assert_eq!(field.selected_idx, 1);
     }
+
+    #[test]
+    fn test_select_field_get_value() {
+        let select = SelectField {
+            selected_idx: 1,
+            label: "Test".to_string(),
+            index: 0,
+            items: vec!["A".to_string(), "B".to_string(), "C".to_string()],
+            transform: |s: &String| s.clone(),
+        };
+
+        assert_eq!(select.get_value(), Some("B".to_string()));
+    }
 }

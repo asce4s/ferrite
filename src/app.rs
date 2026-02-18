@@ -90,3 +90,71 @@ impl AppState {
         self.password.input = Input::default();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_state_new() {
+        let sessions = vec![
+            Session {
+                name: "Wayland".to_string(),
+                exec: vec!["wayland".to_string()],
+            },
+            Session {
+                name: "X11".to_string(),
+                exec: vec!["x11".to_string()],
+            },
+        ];
+        let users = vec!["alice".to_string(), "bob".to_string()];
+        let hostname = "ferrite-host".to_string();
+        let state = FerriteState {
+            version: 1,
+            last_user: Some("bob".to_string()),
+            last_session: Some("X11".to_string()),
+        };
+
+        let app_state = AppState::new(sessions, users, hostname, state);
+
+        assert_eq!(app_state.hostname, "ferrite-host");
+        assert_eq!(app_state.username.selected_idx, 1); // bob
+        assert_eq!(app_state.session.selected_idx, 1); // X11
+        assert_eq!(app_state.focus_index, 2); // password field
+    }
+
+    #[test]
+    fn test_app_state_focus_navigation() {
+        let sessions = vec![Session {
+            name: "Wayland".to_string(),
+            exec: vec!["wayland".to_string()],
+        }];
+        let users = vec!["alice".to_string()];
+        let hostname = "ferrite-host".to_string();
+        let state = FerriteState::default();
+
+        let mut app_state = AppState::new(sessions, users, hostname, state);
+
+        assert_eq!(app_state.focus_index, 0);
+
+        app_state.focus_next();
+        assert_eq!(app_state.focus_index, 1);
+
+        app_state.focus_next();
+        assert_eq!(app_state.focus_index, 2);
+
+        // Boundary
+        app_state.focus_next();
+        assert_eq!(app_state.focus_index, 2);
+
+        app_state.focus_prev();
+        assert_eq!(app_state.focus_index, 1);
+
+        app_state.focus_prev();
+        assert_eq!(app_state.focus_index, 0);
+
+        // Boundary
+        app_state.focus_prev();
+        assert_eq!(app_state.focus_index, 0);
+    }
+}

@@ -47,3 +47,51 @@ impl InputField<String> for TextField {
         Some(self.input.value().to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+
+    #[test]
+    fn test_text_field_handle_event() {
+        let mut text_field = TextField {
+            input: Input::default(),
+            label: "Test".to_string(),
+            index: 0,
+            mask: None,
+        };
+
+        let event = Event::Key(KeyEvent {
+            code: KeyCode::Char('a'),
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        });
+
+        text_field.handle_event(0, &event);
+        assert_eq!(text_field.get_value(), Some("a".to_string()));
+
+        let event_b = Event::Key(KeyEvent {
+            code: KeyCode::Char('b'),
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        });
+
+        text_field.handle_event(0, &event_b);
+        assert_eq!(text_field.get_value(), Some("ab".to_string()));
+    }
+
+    #[test]
+    fn test_text_field_get_value() {
+        let text_field = TextField {
+            input: Input::new("hello".to_string()),
+            label: "Test".to_string(),
+            index: 0,
+            mask: None,
+        };
+
+        assert_eq!(text_field.get_value(), Some("hello".to_string()));
+    }
+}
