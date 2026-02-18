@@ -43,7 +43,7 @@ impl InputField<String> for TextField {
         };
     }
 
-    fn get_value(&self) -> String {
-        self.input.value().to_string()
+    fn get_value(&self) -> Option<String> {
+        Some(self.input.value().to_string())
     }
 }

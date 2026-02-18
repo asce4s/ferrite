@@ -39,7 +39,13 @@ impl AppState {
             .as_deref()
             .and_then(|user| users.iter().position(|u| u == user));
 
-        let focus_index = (last_session.is_some() && last_user.is_some()) as u8 * 2;
+        let mut focus_index = 0;
+        if last_session.is_some() {
+            focus_index = 1;
+        }
+        if last_user.is_some() {
+            focus_index = 2;
+        }
 
         Self {
             auth_state: AuthState::None,
@@ -78,5 +84,9 @@ impl AppState {
 
     pub fn focus_prev(&mut self) {
         self.focus_index = self.focus_index.saturating_sub(1);
+    }
+
+    pub fn clear_password(&mut self) {
+        self.password.input = Input::default();
     }
 }

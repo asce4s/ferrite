@@ -9,7 +9,7 @@ use ratatui::{
 pub trait InputField<T> {
     fn handle_event(&mut self, focus_index: u8, event: &Event);
     fn render(&self, frame: &mut Frame, focus_index: &u8, area: Rect);
-    fn get_value(&self) -> T;
+    fn get_value(&self) -> Option<T>;
 
     fn base_style(&self, is_focused: bool) -> Style {
         if is_focused {

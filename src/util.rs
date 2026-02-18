@@ -8,7 +8,40 @@ use color_eyre::Result;
 #[derive(Debug, Default, Clone)]
 pub struct Session {
     pub name: String,
-    pub exec: String,
+    pub exec: Vec<String>,
+}
+
+fn split_shell_command(cmd: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut escaped = false;
+
+    for c in cmd.chars() {
+        if escaped {
+            current.push(c);
+            escaped = false;
+        } else if c == '\\' {
+            escaped = true;
+        } else if c == '"' {
+            in_quotes = !in_quotes;
+        } else if c.is_whitespace() && !in_quotes {
+            if !current.is_empty() {
+                args.push(current.clone());
+                current.clear();
+            }
+        } else {
+            current.push(c);
+        }
+    }
+    if !current.is_empty() {
+        args.push(current);
+    }
+
+    // Filter out field codes like %u, %f, etc.
+    args.into_iter()
+        .filter(|arg| !arg.starts_with('%'))
+        .collect()
 }
 
 fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
@@ -38,10 +71,10 @@ fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
         let reader = io::BufReader::new(file);
         let mut session = Session::default();
         for line in reader.lines().map_while(Result::ok) {
-            if let Some((key, value)) = line.split_once("=") {
+            if let Some((key, value)) = line.split_once('=') {
                 match key.trim() {
-                    "Name" => session.name = value.to_string(),
-                    "Exec" => session.exec = value.to_string(),
+                    "Name" => session.name = value.trim().to_string(),
+                    "Exec" => session.exec = split_shell_command(value.trim()),
                     _ => {}
                 }
             }
@@ -58,48 +91,6 @@ fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
     Ok(sessions)
 }
 
-// read_sessions_in_dir(dir: &str) -> anyhow::Result<Vec<Session>> {
-//     let sessions = fs::read_dir(dir)?
-//         .filter_map(|e| {
-//             let path = e.ok()?.path();
-//             (path.extension()?.to_str()? == "desktop").then_some(path)
-//         })
-//         .filter_map(|path| {
-//             let file = File::open(path).expect("Unable to read file");
-//             let reader = io::BufReader::new(file);
-//
-//             let mut session = Session::default();
-//
-//             for line in reader.lines() {
-//                 let parts: Vec<&str> = line.unwrap().split("=").collect();
-//
-//                 if !session.name.is_empty() && !session.exec.is_empty() {
-//                     break;
-//                 }
-//
-//                 let key = parts.get(0).unwrap_or(&"").to_string();
-//                 let value = parts.get(1).unwrap_or(&"").to_string();
-//
-//                 if key.trim() == "Name" {
-//                     session.name = value.clone();
-//                 }
-//
-//                 if key.trim() == "Exec" {
-//                     session.exec = value.clone()
-//                 }
-//             }
-//
-//             if session.name.is_empty() || session.exec.is_empty() {
-//                 return None;
-//             }
-//
-//             Some(session)
-//         })
-//         .collect::<Vec<Session>>();
-//
-//     Ok(sessions)
-// }
-//
 pub fn read_sessions() -> Result<Vec<Session>> {
     let mut sessions = Vec::new();
 
@@ -126,19 +117,29 @@ pub fn read_sessions() -> Result<Vec<Session>> {
 pub fn get_login_users() -> Result<Vec<String>> {
     let file = File::open("/etc/passwd")?;
     let reader = io::BufReader::new(file);
+    parse_passwd(reader)
+}
 
+fn parse_passwd<R: BufRead>(reader: R) -> Result<Vec<String>> {
     let mut users = Vec::new();
 
     for line in reader.lines() {
         let line = line?;
-        let fields: Vec<&str> = line.split(':').collect();
-        if fields.len() < 7 {
-            continue; // skip malformed lines
-        }
+        let mut fields = line.split(':');
 
-        let username = fields[0];
-        let uid: u32 = fields[2].parse().unwrap_or(1);
-        let shell = fields[6];
+        let username = match fields.next() {
+            Some(u) => u,
+            None => continue,
+        };
+        let _password = fields.next();
+        let uid: u32 = fields.next().and_then(|u| u.parse().ok()).unwrap_or(1);
+        let _gid = fields.next();
+        let _gecos = fields.next();
+        let _home = fields.next();
+        let shell = match fields.next() {
+            Some(s) => s,
+            None => continue,
+        };
 
         if (uid == 0 || uid >= 1000) && !shell.ends_with("nologin") && shell != "/bin/false" {
             users.push(username.to_string());
@@ -146,4 +147,42 @@ pub fn get_login_users() -> Result<Vec<String>> {
     }
 
     Ok(users)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_shell_command() {
+        assert_eq!(split_shell_command("ls -l"), vec!["ls", "-l"]);
+        assert_eq!(
+            split_shell_command("gnome-session --session=gnome"),
+            vec!["gnome-session", "--session=gnome"]
+        );
+        assert_eq!(
+            split_shell_command("command \"with spaces\""),
+            vec!["command", "with spaces"]
+        );
+        assert_eq!(
+            split_shell_command("command %u %f"),
+            vec!["command"]
+        );
+        assert_eq!(
+            split_shell_command("quoted\\ space"),
+            vec!["quoted space"]
+        );
+    }
+
+    #[test]
+    fn test_parse_passwd() {
+        let data = "root:x:0:0:root:/root:/bin/bash\n\
+                    daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n\
+                    bin:x:2:2:bin:/bin:/usr/sbin/nologin\n\
+                    user:x:1000:1000:user:/home/user:/bin/zsh\n\
+                    guest:x:1001:1001:guest:/home/guest:/bin/false";
+        let reader = io::Cursor::new(data);
+        let users = parse_passwd(reader).unwrap();
+        assert_eq!(users, vec!["root", "user"]);
+    }
 }
