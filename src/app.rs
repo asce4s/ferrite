@@ -90,11 +90,11 @@ mod tests {
         let sessions = vec![
             Session {
                 name: "Wayland".to_string(),
-                exec: "wayland".to_string(),
+                exec: vec!["wayland".to_string()],
             },
             Session {
                 name: "X11".to_string(),
-                exec: "x11".to_string(),
+                exec: vec!["x11".to_string()],
             },
         ];
         let users = vec!["alice".to_string(), "bob".to_string()];
@@ -117,7 +117,7 @@ mod tests {
     fn test_app_state_focus_navigation() {
         let sessions = vec![Session {
             name: "Wayland".to_string(),
-            exec: "wayland".to_string(),
+            exec: vec!["wayland".to_string()],
         }];
         let users = vec!["alice".to_string()];
         let hostname = "ferrite-host".to_string();

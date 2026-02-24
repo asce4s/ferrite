@@ -8,7 +8,7 @@ use color_eyre::Result;
 #[derive(Debug, Default, Clone)]
 pub struct Session {
     pub name: String,
-    pub exec: String,
+    pub exec: Vec<String>,
 }
 
 fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
@@ -41,7 +41,7 @@ fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
             if let Some((key, value)) = line.split_once("=") {
                 match key.trim() {
                     "Name" => session.name = value.to_string(),
-                    "Exec" => session.exec = value.to_string(),
+                    "Exec" => session.exec = value.split_whitespace().map(String::from).collect(),
                     _ => {}
                 }
             }
@@ -58,48 +58,6 @@ fn read_sessions_in_dir(dir: &str) -> Result<Vec<Session>> {
     Ok(sessions)
 }
 
-// read_sessions_in_dir(dir: &str) -> anyhow::Result<Vec<Session>> {
-//     let sessions = fs::read_dir(dir)?
-//         .filter_map(|e| {
-//             let path = e.ok()?.path();
-//             (path.extension()?.to_str()? == "desktop").then_some(path)
-//         })
-//         .filter_map(|path| {
-//             let file = File::open(path).expect("Unable to read file");
-//             let reader = io::BufReader::new(file);
-//
-//             let mut session = Session::default();
-//
-//             for line in reader.lines() {
-//                 let parts: Vec<&str> = line.unwrap().split("=").collect();
-//
-//                 if !session.name.is_empty() && !session.exec.is_empty() {
-//                     break;
-//                 }
-//
-//                 let key = parts.get(0).unwrap_or(&"").to_string();
-//                 let value = parts.get(1).unwrap_or(&"").to_string();
-//
-//                 if key.trim() == "Name" {
-//                     session.name = value.clone();
-//                 }
-//
-//                 if key.trim() == "Exec" {
-//                     session.exec = value.clone()
-//                 }
-//             }
-//
-//             if session.name.is_empty() || session.exec.is_empty() {
-//                 return None;
-//             }
-//
-//             Some(session)
-//         })
-//         .collect::<Vec<Session>>();
-//
-//     Ok(sessions)
-// }
-//
 pub fn read_sessions() -> Result<Vec<Session>> {
     let mut sessions = Vec::new();
 
@@ -164,12 +122,12 @@ mod tests {
         let mut file = File::create(session_file_path).unwrap();
         writeln!(file, "[Desktop Entry]").unwrap();
         writeln!(file, "Name=TestSession").unwrap();
-        writeln!(file, "Exec=test-session").unwrap();
+        writeln!(file, "Exec=test-session --arg").unwrap();
 
         let sessions = read_sessions_in_dir(dir.path().to_str().unwrap()).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].name, "TestSession");
-        assert_eq!(sessions[0].exec, "test-session");
+        assert_eq!(sessions[0].exec, vec!["test-session", "--arg"]);
     }
 
     #[test]
