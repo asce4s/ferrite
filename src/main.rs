@@ -16,6 +16,8 @@ use crate::util::{get_login_users, read_sessions};
 use crate::widgets::widget::InputField;
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
+use std::io::{Write, stdout};
+use std::time::Duration;
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -26,9 +28,12 @@ fn main() -> Result<()> {
     let hostname = hostname::get()?.to_string_lossy().to_string();
     let mut app_state = AppState::new(sessions, users, hostname, state);
 
+    std::thread::sleep(Duration::from_millis(1500));
+    print!("\x1bc");
+    stdout().flush()?;
     let terminal = ratatui::init();
     let result = run(terminal, &mut app_state);
-    
+
     ratatui::restore();
     result
 }
